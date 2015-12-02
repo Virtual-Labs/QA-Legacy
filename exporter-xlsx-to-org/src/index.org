@@ -68,6 +68,7 @@ python exporter.py <path-to-xlsx-files>
 ** Implementation
 *** Main Function
 #+begin_src python :tangle exporter.py :eval no
+import xlrd
 import os
 import sys
 import re
@@ -121,17 +122,12 @@ def process_lab_file(path, labName):
     directory = parentDirectory + "/" + labName
     make_directory(directory)
     parentDirectory = directory
-    count = 1
-    metaFilePath = parentDirectory + "/" + labName + "_testreport_" + time.strftime('%c') + ".org"
-    metaFilePointer = open(metaFilePath, 'w')
 
     for expIndex in range(number_of_experiments):
         directory = parentDirectory + "/exp" + str(expIndex+1).zfill(2)
         make_directory(directory)
         experiment = book.sheet_by_index(expIndex)
-        testCasesPath = process_experiment(experiment, directory)
-        count = save_link_to_test_cases(metaFilePointer, count, experiment.name, testCasesPath)
-    metaFilePointer.close()
+        process_experiment(experiment, directory)
     return
 #+end_src
 *** Make Directory
@@ -152,13 +148,17 @@ def process_experiment(experiment, directory):
         filepointer = open(filepath, 'w')
         data =  org_data(experiment.row(row))
         write_to_file(filepointer, data)
-    return testCasesPath
+
+    metaFilePath = directory + "/" + experiment.name + "_metafile" + ".org"
+    metaFilePointer = open(metaFilePath, 'w')
+    save_link_of_test_cases(metaFilePointer, testCasesPath)
+    return
 #+end_src
 *** Convert to Org format
 #+begin_src python :tangle exporter.py :eval no
 def org_data(row):
     data = {}
-    data['author'] = "* Author : " + row[10].value + "\n"
+    data['author'] = "* Author: " + row[10].value + "\n"
     data['date'] = "* Date Created: " + time.strftime('%c') + "\n"
     data['environment'] = "* Environment \n" + row[12].value + "\n"
     data['objective'] = "* Objective \n" + row[6].value + "\n"
@@ -186,20 +186,22 @@ def write_to_file(filepointer, data):
 
 *** Save links to test cases in a org file
 #+begin_src python :tangle exporter.py :eval no
-def save_link_to_test_cases(filepointer, count, expName, testCasesPath):
+def save_link_of_test_cases(filepointer, testCasesPath):
+    count = 1
     for path in testCasesPath:
         basename = os.path.basename(path)
-        line = str(count) + ". " + expName + " " + "[[" + path + "]" + "[" + basename + "]]" + "\n"
+        line = str(count) + ". " + "\t" + "[[" + path + "]" + "[" + basename + "]]" + "\n"
         filepointer.write(line)
         count+=1
-    return count
+    filepointer.close()
+    return
 #+end_src
 
 *** Main function condition
-#+BEGIN_SRC python :tangle exporter.py :eval no
+#+begin_src python :tangle exporter.py :eval no
 if __name__ == "__main__":
     main(sys.argv)
-#+END_SRC
+#+end_src
 * Releases
 ** Release - v1.0
    This release will satisfy all the requirements.
